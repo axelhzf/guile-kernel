@@ -25,7 +25,7 @@
 
 (define notebook-info (json->scm (open-input-file (car (last-pair (command-line))))))
 
-(define (get-notebook-info-atom name) (assoc-ref notebook-info name))
+(define (get-notebook-info-atom name) (hash-ref notebook-info name))
 
 ;; parse json values
 (define notebook-info-control-port     (get-notebook-info-atom "control_port"))
@@ -41,7 +41,7 @@
 ;; execution counter closure
 (define execution-counter (let ((x 0)) (lambda () (begin (set! x (+ x 1)) x))))
 
-(define (create-address port) (string-append notebook-info-transport "://" notebook-info-ip ":" port))
+(define (create-address port) (string-append notebook-info-transport "://" notebook-info-ip ":" (number->string port)))
 
 ;; zeromq context
 (define context (zmq-create-context))
@@ -116,10 +116,10 @@
 	   (wire-parent-header (bv->string (list-ref parts 4)))
 	   (wire-metadata      (json-string->scm (bv->string (list-ref parts 5))))
 	   (wire-content       (json-string->scm (bv->string (list-ref parts 6)))))
-      (let ((msg-type      (assoc-ref wire-header "msg_type"))
-	    (msg-username  (assoc-ref wire-header "username"))
-	    (msg-session   (assoc-ref wire-header "session"))
-	    (msg-version   (assoc-ref wire-header "version")))
+      (let ((msg-type      (hash-ref wire-header "msg_type"))
+	    (msg-username  (hash-ref wire-header "username"))
+	    (msg-session   (hash-ref wire-header "session"))
+	    (msg-version   (hash-ref wire-header "version")))
 	(let ((header- (make-header msg-username msg-session msg-version)))
 	  (pub-busy header- (json-or-empty wire-header))
 	  ((dispatch msg-type) socket wire-uuid header- (json-or-empty wire-header) (json-or-empty wire-metadata) wire-content)
@@ -140,12 +140,12 @@
 	  (scm->json-string KERNEL-INFO)))
 
 (define (reply-execute-request socket uuid header- parent-header metadata content)
-    (let ((code              (string-append    "(begin " (assoc-ref content "code") ")")) ;; make one s-expression from possible list
-	  (silent            (assoc-ref content "silent"))
-	  (store-history     (assoc-ref content "store_history"))
-	  (user-expressions  (assoc-ref content "user_expressions"))
-	  (allow-stdin       (assoc-ref content "allow_stdin"))
-	  (stop-on-error     (assoc-ref content "stop_on_error"))
+    (let ((code              (string-append    "(begin " (hash-ref content "code") ")")) ;; make one s-expression from possible list
+	  (silent            (hash-ref content "silent"))
+	  (store-history     (hash-ref content "store_history"))
+	  (user-expressions  (hash-ref content "user_expressions"))
+	  (allow-stdin       (hash-ref content "allow_stdin"))
+	  (stop-on-error     (hash-ref content "stop_on_error"))
 	  (empty-object      (make-hash-table 1))
 	  (counter           (execution-counter)))
       (let ((err #f)
